@@ -2,13 +2,17 @@ import express, { Request, Response } from 'express';
 import { requireUser } from './middlewares/auth';
 import * as ProcessService from '../services/processService';
 
+interface AuthRequest extends Request {
+  user?: Record<string, unknown>;
+}
+
 const router = express.Router();
 
 // Description: Get list of running processes with metrics and risk scoring
 // Endpoint: GET /api/processes
 // Request: {}
 // Response: { processes: Array<{ id: string, name: string, pid: number, user: string, cpu: number, memory: number, path: string, riskScore: number }> }
-router.get('/', requireUser(), async (req: Request, res: Response) => {
+router.get('/', requireUser(), async (req: AuthRequest, res: Response) => {
   try {
     console.log(`[Process Monitor] User ${req.user?.email} requested process list`);
 
@@ -31,7 +35,7 @@ router.get('/', requireUser(), async (req: Request, res: Response) => {
 // Endpoint: POST /api/processes/:id/kill
 // Request: { id: string (PID) }
 // Response: { success: boolean, message: string }
-router.post('/:id/kill', requireUser(), async (req: Request, res: Response) => {
+router.post('/:id/kill', requireUser(), async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const pid = parseInt(id, 10);
