@@ -73,9 +73,10 @@ export function IOCHunt() {
       });
     } catch (error) {
       console.error('Hunt failed:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Hunt failed';
       toast({
         title: 'Error',
-        description: 'Hunt failed',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
@@ -138,14 +139,22 @@ export function IOCHunt() {
                   variant="outline"
                   size="sm"
                   className="gap-2"
-                  onClick={() => {
-                    navigator.clipboard.read().then((items) => {
-                      items[0].getType('text/plain').then((blob) => {
-                        blob.text().then((text) => {
-                          setIocInput(text);
-                        });
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      setIocInput(text);
+                      toast({
+                        title: 'Success',
+                        description: 'Pasted from clipboard',
                       });
-                    });
+                    } catch (error) {
+                      console.error('Failed to read clipboard:', error);
+                      toast({
+                        title: 'Error',
+                        description: 'Failed to read from clipboard. Please paste manually or grant clipboard permissions.',
+                        variant: 'destructive',
+                      });
+                    }
                   }}
                 >
                   <Clipboard className="h-4 w-4" />
