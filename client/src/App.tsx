@@ -7,22 +7,37 @@ import { Register } from "./pages/Register"
 import { ProtectedRoute } from "./components/ProtectedRoute"
 import { Layout } from "./components/Layout"
 import { BlankPage } from "./pages/BlankPage"
+import { Dashboard } from "./pages/Dashboard"
+import { ProcessMonitor } from "./pages/ProcessMonitor"
+import { IntegrityScanner } from "./pages/IntegrityScanner"
+import { IOCHunt } from "./pages/IOCHunt"
+import { BehavioralDetection } from "./pages/BehavioralDetection"
+import { ResponseCenter } from "./pages/ResponseCenter"
+import { Settings } from "./pages/Settings"
 
 function App() {
   return (
-  <AuthProvider>
-    <ThemeProvider defaultTheme="light" storageKey="ui-theme">
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/" element={<ProtectedRoute> <Layout /> </ProtectedRoute>} />
-          <Route path="*" element={<BlankPage />} />
-        </Routes>
-      </Router>
-      <Toaster />
-    </ThemeProvider>
-  </AuthProvider>
+    <AuthProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="ui-theme">
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route index element={<Dashboard />} />
+              <Route path="processes" element={<ProcessMonitor />} />
+              <Route path="scanner" element={<IntegrityScanner />} />
+              <Route path="ioc-hunt" element={<IOCHunt />} />
+              <Route path="behavioral" element={<BehavioralDetection />} />
+              <Route path="response" element={<ResponseCenter />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
+            <Route path="*" element={<BlankPage />} />
+          </Routes>
+        </Router>
+        <Toaster />
+      </ThemeProvider>
+    </AuthProvider>
   )
 }
 
