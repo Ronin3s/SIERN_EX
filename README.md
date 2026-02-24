@@ -312,6 +312,21 @@ Once logged in, use the sidebar to navigate. Here's how to test each page:
 
 The project fully supports Windows. Follow these steps instead of the Linux ones above.
 
+### One-Click Setup (Easiest)
+
+Just double-click **`START-SENTINEL.bat`** in the project folder. It will:
+
+1. ✅ Check that Node.js is installed
+2. ✅ Start MongoDB (Docker or Windows Service)
+3. ✅ Create `server\.env` with auto-generated secrets (if missing)
+4. ✅ Install all dependencies
+5. ✅ Start the dev server
+6. ✅ Open `http://localhost:5173` in your browser
+
+> **Prerequisite:** You still need [Node.js v20+](https://nodejs.org) and MongoDB (either [installed](https://www.mongodb.com/try/download/community) or via [Docker Desktop](https://www.docker.com/products/docker-desktop/)).
+
+### Manual Setup (Step-by-Step)
+
 ### 1. Install Prerequisites
 
 Download and install these (use the default settings for each):
