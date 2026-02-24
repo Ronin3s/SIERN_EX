@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { getDashboardStats, getRecentAlerts } from '@/api/dashboard';
 import { useToast } from '@/hooks/useToast';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardStats {
   activeProcesses: number;
@@ -27,6 +28,7 @@ export function Dashboard() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -99,8 +101,11 @@ export function Dashboard() {
             <p className="text-muted-foreground mt-2">Real-time threat monitoring and response</p>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline">View Alerts</Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700">
+            <Button variant="outline" onClick={() => navigate('/behavioral')}>View Alerts</Button>
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              onClick={() => navigate('/scanner')}
+            >
               Start Scan
             </Button>
           </div>

@@ -5,15 +5,23 @@ import { Badge } from "./ui/badge"
 import { useAuth } from "@/contexts/AuthContext"
 import { useNavigate } from "react-router-dom"
 import { useState, useEffect } from "react"
+import { getDashboardStats } from "@/api/dashboard"
 
 export function Header() {
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [alertCount, setAlertCount] = useState(0)
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    getDashboardStats()
+      .then((stats) => setAlertCount(stats?.alertsLast24h || 0))
+      .catch(() => setAlertCount(0))
   }, [])
 
   const handleLogout = () => {
@@ -48,11 +56,13 @@ export function Header() {
           </div>
 
           {/* Alerts */}
-          <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/behavioral')}>
             <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-600 text-white text-xs">
-              3
-            </Badge>
+            {alertCount > 0 && (
+              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-600 text-white text-xs">
+                {alertCount}
+              </Badge>
+            )}
           </Button>
 
           {/* Theme Toggle */}

@@ -1,4 +1,6 @@
 import psList from 'ps-list';
+import os from 'os';
+import { exec } from 'child_process';
 
 export interface ProcessInfo {
   id: string;
@@ -35,13 +37,21 @@ function calculateRiskScore(process: {
   const command = process.cmd?.toLowerCase() || '';
 
   // High-risk process names (50 points)
-  const highRiskProcesses = ['wscript.exe', 'cscript.exe', 'mshta.exe', 'regsvr32.exe'];
+  // Windows high-risk processes + Linux offensive tools
+  const highRiskProcesses = [
+    'wscript.exe', 'cscript.exe', 'mshta.exe', 'regsvr32.exe',
+    'nc', 'ncat', 'netcat', 'socat', 'msfconsole', 'msfvenom',
+  ];
   if (highRiskProcesses.some((p) => processName.includes(p))) {
     risk += 50;
   }
 
   // Medium-risk process names (30 points)
-  const mediumRiskProcesses = ['powershell.exe', 'cmd.exe', 'rundll32.exe', 'certutil.exe'];
+  // Windows medium-risk processes + Linux scripting engines
+  const mediumRiskProcesses = [
+    'powershell.exe', 'cmd.exe', 'rundll32.exe', 'certutil.exe',
+    'python', 'python3', 'perl', 'ruby', 'bash', 'sh', 'curl', 'wget',
+  ];
   if (mediumRiskProcesses.some((p) => processName.includes(p))) {
     risk += 30;
   }
@@ -138,24 +148,35 @@ export async function terminateProcess(pid: number): Promise<{ success: boolean;
       };
     }
 
-    // Use Node.js process.kill to terminate
-    // Note: This only works for processes the user has permission to kill
-    process.kill(pid, 'SIGTERM');
+    // Platform-aware process termination
+    if (os.platform() === 'win32') {
+      // Windows: use taskkill command
+      await new Promise<void>((resolve, reject) => {
+        exec(`taskkill /PID ${pid} /F`, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            console.log(`Process ${pid} terminated via taskkill`);
+            resolve();
+          }
+        });
+      });
+    } else {
+      // Linux/macOS: use POSIX signals
+      process.kill(pid, 'SIGTERM');
 
-    console.log(`Successfully sent termination signal to process ${pid} (${targetProcess.name})`);
+      console.log(`Successfully sent SIGTERM to process ${pid} (${targetProcess.name})`);
 
-    // Verify the process was terminated (small delay to allow termination)
-    await new Promise((resolve) => setTimeout(resolve, 500));
+      // Verify the process was terminated
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-    try {
-      // Try to send signal 0 to check if process exists
-      process.kill(pid, 0);
-      // If we reach here, process still exists - may need SIGKILL
-      console.warn(`Process ${pid} still running after SIGTERM, attempting SIGKILL`);
-      process.kill(pid, 'SIGKILL');
-    } catch (err) {
-      // Error means process is gone - this is expected
-      console.log(`Process ${pid} successfully terminated`);
+      try {
+        process.kill(pid, 0);
+        console.warn(`Process ${pid} still running after SIGTERM, attempting SIGKILL`);
+        process.kill(pid, 'SIGKILL');
+      } catch (err) {
+        console.log(`Process ${pid} successfully terminated`);
+      }
     }
 
     return {

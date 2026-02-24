@@ -46,6 +46,26 @@ sudo systemctl status mongod
 # Should show "active (running)"
 ```
 
+**Alternative: Run MongoDB with Docker** (no system install needed):
+
+```bash
+sudo docker run -d \
+  --name mongodb \
+  -p 27017:27017 \
+  -v mongodb_data:/data/db \
+  mongo
+```
+
+This starts MongoDB in a container on `localhost:27017`. Useful commands:
+
+```bash
+docker ps                # Verify it's running
+docker stop mongodb      # Stop it
+docker start mongodb     # Start it again
+docker rm mongodb        # Remove the container
+docker volume rm mongodb_data  # Delete all data
+```
+
 ### 3. Create the `.env` File
 
 Copy the template and fill in your secrets:
@@ -285,6 +305,126 @@ Once logged in, use the sidebar to navigate. Here's how to test each page:
 | Processes page is empty | The `ps-list` package requires Linux or macOS. It won't work on Windows WSL without native access. |
 | CORS errors in browser console | Make sure `CLIENT_URL=http://localhost:5173` is in your `.env` |
 | `Cannot find module` TypeScript errors | Run `npm run postinstall` to install all dependencies |
+
+---
+
+## Setup on Windows (7 / 10 / 11)
+
+The project fully supports Windows. Follow these steps instead of the Linux ones above.
+
+### 1. Install Prerequisites
+
+Download and install these (use the default settings for each):
+
+| Tool | Download |
+|:-----|:---------|
+| **Node.js v20+** | [nodejs.org/en/download](https://nodejs.org/en/download) — choose the **Windows Installer (.msi)** |
+| **Git for Windows** | [git-scm.com/download/win](https://git-scm.com/download/win) |
+| **MongoDB Community** | [mongodb.com/try/download/community](https://www.mongodb.com/try/download/community) — choose **Windows x64 MSI** |
+
+> **Tip:** During MongoDB installation, check **"Install MongoDB as a Service"** so it starts automatically on boot.
+
+### 2. Verify Installation
+
+Open **PowerShell** or **Command Prompt** and run:
+
+```powershell
+node -v          # Should print v20.x.x or higher
+git --version    # Should print git version x.x.x
+mongosh          # Should open MongoDB shell (type 'exit' to close)
+```
+
+If `mongosh` fails, the MongoDB service may not be running. Start it:
+
+```powershell
+# PowerShell (as Administrator):
+net start MongoDB
+```
+
+**Alternative: Run MongoDB with Docker Desktop:**
+
+If you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed:
+
+```powershell
+docker run -d --name mongodb -p 27017:27017 -v mongodb_data:/data/db mongo
+```
+
+### 3. Clone and Setup
+
+```powershell
+git clone <your-repo-url>
+cd SIERN_EX
+```
+
+### 4. Create the `.env` File
+
+```powershell
+copy .env.example server\.env
+```
+
+Edit `server\.env` in Notepad (or any editor):
+
+```env
+PORT=3000
+DATABASE_URL=mongodb://localhost:27017/sentinel
+NODE_ENV=development
+AUTH_STRATEGY=email
+JWT_SECRET=paste_a_random_64_char_string_here
+REFRESH_TOKEN_SECRET=paste_another_random_64_char_string_here
+CLIENT_URL=http://localhost:5173
+```
+
+Generate random secrets in PowerShell:
+
+```powershell
+-join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})
+```
+
+Run it twice — use one for `JWT_SECRET` and one for `REFRESH_TOKEN_SECRET`.
+
+### 5. Install Dependencies
+
+```powershell
+npm install
+npm run postinstall
+```
+
+### 6. Start the Dev Server
+
+```powershell
+npm run dev
+```
+
+This starts the shared types watcher, client (Vite on `http://localhost:5173`), and server (Express on `http://localhost:3000`).
+
+### 7. Open the App
+
+Open your browser to:
+
+```
+http://localhost:5173
+```
+
+Register a new account at `/register`, then you'll see the Dashboard.
+
+### Windows-Specific Notes
+
+| Feature | Windows Behavior |
+|:--------|:-----------------|
+| **Process Monitor** | Lists all Windows processes (`.exe` files). Kill uses `taskkill /PID /F`. |
+| **File Scanner** | Works with Windows paths (e.g., `C:\Users\YourName\Documents`). Use backslashes. |
+| **IOC Hunt** | Searches Windows processes and filesystem. Use paths like `C:\temp\test`. |
+| **Behavioral Detection** | Detects Windows-specific threats: `svchost.exe`, `lsass.exe` injection, `%TEMP%` directory spawning, encoded PowerShell commands. |
+
+### Windows Troubleshooting
+
+| Problem | Solution |
+|:--------|:---------|
+| `mongosh` not recognized | Add MongoDB's `bin` folder to your PATH: `C:\Program Files\MongoDB\Server\7.0\bin` |
+| `net start MongoDB` fails | Open Services (`services.msc`), find "MongoDB Server", right-click → Start |
+| `npm install` fails with Python errors | Install Windows Build Tools: `npm install -g windows-build-tools` (run as Admin) |
+| Permission denied killing processes | Run the terminal as **Administrator** |
+| Port 3000 already in use | Find and kill it: `netstat -ano \| findstr :3000` then `taskkill /PID <pid> /F` |
 
 ---
 

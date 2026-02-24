@@ -1,6 +1,7 @@
 import Anomaly, { IAnomaly } from '../models/Anomaly';
 import * as ProcessService from './processService';
 import * as alertService from './alertService';
+import os from 'os';
 
 /**
  * Detection rule definition
@@ -33,7 +34,11 @@ const DETECTION_RULES: DetectionRule[] = [
         severity: 'warning',
         detect: (proc) => {
             const cmd = (proc.cmd || proc.path || '').toLowerCase();
-            const tempPaths = ['/tmp/', '/var/tmp/', 'appdata\\local\\temp', 'c:\\temp', 'c:\\windows\\temp'];
+            const tempPaths = [
+                os.tmpdir().toLowerCase(),
+                '/tmp/', '/var/tmp/',
+                'appdata\\local\\temp', 'c:\\temp', 'c:\\windows\\temp',
+            ];
             return tempPaths.some((p) => cmd.includes(p));
         },
     },
