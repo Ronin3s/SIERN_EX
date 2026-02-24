@@ -308,6 +308,86 @@ Once logged in, use the sidebar to navigate. Here's how to test each page:
 
 ---
 
+## Attack Simulation Testing
+
+Two scripts simulate a **real attacker kill chain** to trigger every Sentinel detection feature. They are completely safe — they only create temp files, spawn harmless processes, and clean everything up at the end.
+
+### Running on Linux
+
+```bash
+# Make sure Sentinel is running first
+npm run dev
+
+# In a second terminal:
+chmod +x test-attack-linux.sh
+./test-attack-linux.sh
+```
+
+### Running on Windows
+
+```powershell
+# Make sure Sentinel is running first (START-SENTINEL.bat or npm run dev)
+
+# Right-click test-attack-windows.ps1 > "Run with PowerShell"
+# Or open PowerShell and run:
+PowerShell -ExecutionPolicy Bypass -File test-attack-windows.ps1
+```
+
+Both scripts ask for your **email + password**, then run 6 attack phases automatically.
+
+### Attack Phases
+
+| Phase | Attack | What It Does |
+|:------|:-------|:-------------|
+| 1 | Initial Access | Drops fake malware files (`dropper.exe`, `beacon.dll`, webshell) |
+| 2 | Persistence | Creates a file baseline, then tampers config files (enables root login, disables firewall) |
+| 3 | Execution | Spawns encoded commands, temp-dir processes, netcat listener (Linux) / certutil abuse (Windows), C2 callbacks |
+| 4 | Detection | Calls Sentinel behavioral scan + simulates all 3 rules (BR-001, BR-002, BR-004) |
+| 5 | Hunting | Hunts for the planted malware hash, C2 IP (192.168.13.37), and evil.com domain |
+| 6 | Report | Prints summary and waits for you to review Sentinel UI before cleanup |
+
+### What You'll See in Sentinel
+
+**Dashboard:**
+
+- Alert count jumps to **6+ critical/warning alerts**
+- Alert list shows `Encoded Command Execution`, `Temp Directory Spawning`, `Process Injection`
+
+**Process Monitor:**
+
+- Linux: `nc`, `curl`, `wget` appear with **high risk scores**
+- Windows: `certutil.exe`, `powershell.exe` flagged as high/medium risk
+
+**Integrity Scanner:**
+
+- Set path to the attack test directory and scan with "Compare against baseline"
+- Linux: `/tmp/sentinel_attack_test/etc` — `sshd_config` shows as **MODIFIED**
+- Windows: `C:\temp\sentinel_attack_test\config` — `firewall.conf` shows as **MODIFIED**
+- New backdoor files appear as **NEW**
+
+**IOC Hunt:**
+
+- Paste the SHA256 hash printed by the script
+- Search the attack directory — `dropper.exe` matches as **Critical**
+- Search processes for `192.168.13.37` — C2 callback process matches
+
+**Behavioral Detection:**
+
+- **BR-001**: Encoded command execution (base64 / `-encodedcommand`)
+- **BR-002**: Temp directory spawning (`/tmp` or `%TEMP%`)
+- **BR-004**: Process injection signatures (simulated)
+
+**Response Center:**
+
+- Each critical detection creates a containment action in the queue
+- Click **Undo** to resolve them
+
+### Cleanup
+
+Press **Enter** when prompted — the script kills all spawned processes and deletes all temp files automatically.
+
+---
+
 ## Setup on Windows (7 / 10 / 11)
 
 The project fully supports Windows. Follow these steps instead of the Linux ones above.
