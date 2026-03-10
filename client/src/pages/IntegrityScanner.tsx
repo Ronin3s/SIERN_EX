@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Play, Pause, Plus, Download, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { Play, Pause, Plus, Download, AlertCircle, CheckCircle, Trash2, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { motion } from 'framer-motion';
-import { getScanResults, startScan, getBaseline } from '@/api/scanner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getScanResults, startScan, getBaseline, createBaseline } from '@/api/scanner';
 import { useToast } from '@/hooks/useToast';
 
 interface ScanResult {
@@ -28,6 +28,9 @@ export function IntegrityScanner() {
   const [results, setResults] = useState<ScanResult[]>([]);
   const [includeSubdirs, setIncludeSubdirs] = useState(true);
   const [compareBaseline, setCompareBaseline] = useState(true);
+  const [selectedResult, setSelectedResult] = useState<ScanResult | null>(null);
+  const [creatingBaseline, setCreatingBaseline] = useState(false);
+  const [loadingBaseline, setLoadingBaseline] = useState(false);
   const { toast } = useToast();
 
   const handleStartScan = async () => {
@@ -80,6 +83,84 @@ export function IntegrityScanner() {
       setScanning(false);
       setTimeout(() => setProgress(0), 1000);
     }
+  };
+
+  const handleCreateBaseline = async () => {
+    if (!scanPath) {
+      toast({
+        title: 'Error',
+        description: 'Please enter a scan path before creating a baseline',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setCreatingBaseline(true);
+      const result = await createBaseline({
+        path: scanPath,
+        includeSubdirectories: includeSubdirs,
+      });
+      toast({
+        title: 'Baseline Created',
+        description: result.message || `Created ${result.created ?? 0}, updated ${result.updated ?? 0} entries`,
+      });
+    } catch (error) {
+      console.error('Failed to create baseline:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create baseline',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingBaseline(false);
+    }
+  };
+
+  const handleLoadBaseline = async () => {
+    try {
+      setLoadingBaseline(true);
+      const data = await getBaseline();
+      const count = Array.isArray(data) ? data.length : 0;
+      toast({
+        title: 'Baseline Loaded',
+        description: `Baseline contains ${count} tracked file${count !== 1 ? 's' : ''}`,
+      });
+    } catch (error) {
+      console.error('Failed to load baseline:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load baseline',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoadingBaseline(false);
+    }
+  };
+
+  const handleExportReport = () => {
+    const headers = ['File Path', 'Change Type', 'Last Modified', 'Risk Level', 'Current Hash', 'Previous Hash'];
+    const rows = results.map((r) => [
+      r.filePath,
+      r.changeType,
+      r.lastModified,
+      r.riskLevel,
+      r.currentHash,
+      r.previousHash,
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((val) => `"${val}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `integrity_report_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exported', description: `${results.length} file changes exported to CSV` });
   };
 
   const getRiskColor = (level: string) => {
@@ -213,13 +294,23 @@ export function IntegrityScanner() {
               <CardTitle className="text-base">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start gap-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={handleCreateBaseline}
+                disabled={creatingBaseline || scanning}
+              >
                 <Plus className="h-4 w-4" />
-                Create Baseline
+                {creatingBaseline ? 'Creating...' : 'Create Baseline'}
               </Button>
-              <Button variant="outline" className="w-full justify-start gap-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={handleLoadBaseline}
+                disabled={loadingBaseline || scanning}
+              >
                 <Download className="h-4 w-4" />
-                Load Baseline
+                {loadingBaseline ? 'Loading...' : 'Load Baseline'}
               </Button>
             </CardContent>
           </Card>
@@ -272,7 +363,12 @@ export function IntegrityScanner() {
                   <CardTitle>Scan Results</CardTitle>
                   <CardDescription>File changes detected</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleExportReport}
+                >
                   <Download className="h-4 w-4" />
                   Export Report
                 </Button>
@@ -323,7 +419,11 @@ export function IntegrityScanner() {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button variant="ghost" size="sm">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedResult(result)}
+                                >
                                   View
                                 </Button>
                               </TableCell>
@@ -339,6 +439,92 @@ export function IntegrityScanner() {
           </Card>
         </motion.div>
       )}
+
+      {/* File Details Panel */}
+      <AnimatePresence>
+        {selectedResult && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedResult(null)}
+            />
+            <motion.div
+              className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-white dark:bg-slate-950 border-l border-white/20 dark:border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
+              initial={{ x: 400 }}
+              animate={{ x: 0 }}
+              exit={{ x: 400 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">File Details</h2>
+                    <p className="text-sm text-muted-foreground mt-1 font-mono break-all">
+                      {selectedResult.filePath.split('/').pop() || selectedResult.filePath}
+                    </p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedResult(null)}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Change Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Change Type</span>
+                      <div className="flex items-center gap-2">
+                        {getChangeTypeIcon(selectedResult.changeType)}
+                        <span className="font-medium">{selectedResult.changeType}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Risk Level</span>
+                      <Badge className={getRiskColor(selectedResult.riskLevel)}>
+                        {selectedResult.riskLevel.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Last Modified</span>
+                      <span className="text-sm">{selectedResult.lastModified}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">File Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Full Path</p>
+                      <p className="font-mono text-sm break-all">{selectedResult.filePath}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Current Hash</p>
+                      <p className="font-mono text-xs break-all text-blue-600 dark:text-blue-400">
+                        {selectedResult.currentHash || '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Previous Hash</p>
+                      <p className="font-mono text-xs break-all text-muted-foreground">
+                        {selectedResult.previousHash || '—'}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

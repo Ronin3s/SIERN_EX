@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, Undo2, Eye, Clock } from 'lucide-react';
+import { Shield, Undo2, Eye, Clock, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getContainmentActions, getActionHistory, undoAction } from '@/api/response';
 import { useToast } from '@/hooks/useToast';
 
@@ -31,6 +31,7 @@ export function ResponseCenter() {
   const [containments, setContainments] = useState<ContainmentAction[]>([]);
   const [history, setHistory] = useState<ActionHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedContainment, setSelectedContainment] = useState<ContainmentAction | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -180,7 +181,12 @@ export function ResponseCenter() {
                             <TableCell className="text-sm">{action.user}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-2 justify-end">
-                                <Button variant="ghost" size="sm" className="gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1"
+                                  onClick={() => setSelectedContainment(action)}
+                                >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button
@@ -250,6 +256,93 @@ export function ResponseCenter() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Containment Details Panel */}
+      <AnimatePresence>
+        {selectedContainment && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedContainment(null)}
+            />
+            <motion.div
+              className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-white dark:bg-slate-950 border-l border-white/20 dark:border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
+              initial={{ x: 400 }}
+              animate={{ x: 0 }}
+              exit={{ x: 400 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Containment Details</h2>
+                    <p className="text-sm text-muted-foreground mt-1">{selectedContainment.target}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedContainment(null)}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Action Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Type</span>
+                      <Badge className={getActionTypeColor(selectedContainment.type)}>
+                        {selectedContainment.type.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge className={`${getStatusColor(selectedContainment.status)} border`}>
+                        {selectedContainment.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Action Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Target</p>
+                      <p className="font-mono text-sm break-all">{selectedContainment.target}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Executed By</p>
+                      <p className="font-medium">{selectedContainment.user}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Timestamp</p>
+                      <p className="text-sm">{selectedContainment.timestamp}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-orange-500 border-orange-500/30 hover:bg-orange-500/10"
+                  onClick={() => {
+                    handleUndo(selectedContainment.id);
+                    setSelectedContainment(null);
+                  }}
+                >
+                  <Undo2 className="h-4 w-4" />
+                  Reverse This Action
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

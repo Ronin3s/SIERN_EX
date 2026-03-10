@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Play, Settings, Eye } from 'lucide-react';
+import { AlertCircle, Play, Settings, Eye, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getAnomalies, simulateEvent } from '@/api/behavioral';
 import { useToast } from '@/hooks/useToast';
 
@@ -32,6 +32,7 @@ export function BehavioralDetection() {
   const [loading, setLoading] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [simulatingRule, setSimulatingRule] = useState<string | null>(null);
+  const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -242,7 +243,12 @@ export function BehavioralDetection() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" className="gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => setSelectedAnomaly(anomaly)}
+                        >
                           <Eye className="h-4 w-4" />
                           Details
                         </Button>
@@ -255,6 +261,85 @@ export function BehavioralDetection() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Anomaly Details Panel */}
+      <AnimatePresence>
+        {selectedAnomaly && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedAnomaly(null)}
+            />
+            <motion.div
+              className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-white dark:bg-slate-950 border-l border-white/20 dark:border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
+              initial={{ x: 400 }}
+              animate={{ x: 0 }}
+              exit={{ x: 400 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">Anomaly Details</h2>
+                    <p className="text-sm text-muted-foreground mt-1">{selectedAnomaly.ruleId}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedAnomaly(null)}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Severity & Status</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Severity</span>
+                      <Badge className={getSeverityColor(selectedAnomaly.severity)}>
+                        {selectedAnomaly.severity.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge className={`${getStatusColor(selectedAnomaly.status)} border`}>
+                        {selectedAnomaly.status.toUpperCase()}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Rule Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rule ID</p>
+                      <p className="font-mono font-medium">{selectedAnomaly.ruleId}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Rule Name</p>
+                      <p className="font-medium">{selectedAnomaly.ruleName}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Triggered By Process</p>
+                      <p className="font-mono text-sm break-all">{selectedAnomaly.process}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Timestamp</p>
+                      <p className="text-sm">{selectedAnomaly.timestamp}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Clipboard, Trash2, Play, AlertCircle, CheckCircle } from 'lucide-react';
+import { Search, Clipboard, Trash2, Play, AlertCircle, CheckCircle, X } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { startIOCHunt, getHuntResults } from '@/api/iocHunt';
 import { useToast } from '@/hooks/useToast';
 
@@ -27,6 +27,7 @@ export function IOCHunt() {
   const [huntProgress, setHuntProgress] = useState(0);
   const [results, setResults] = useState<HuntResult[]>([]);
   const [searchScope, setSearchScope] = useState('all');
+  const [selectedResult, setSelectedResult] = useState<HuntResult | null>(null);
   const { toast } = useToast();
 
   const handleStartHunt = async () => {
@@ -83,6 +84,31 @@ export function IOCHunt() {
       setHunting(false);
       setTimeout(() => setHuntProgress(0), 1000);
     }
+  };
+
+  const handleExportResults = () => {
+    const headers = ['IOC', 'Match Location', 'First Seen', 'Last Seen', 'Confidence (%)', 'Severity'];
+    const rows = results.map((r) => [
+      r.ioc,
+      r.matchLocation,
+      r.firstSeen,
+      r.lastSeen,
+      r.confidence,
+      r.severity,
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((val) => `"${val}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ioc_hunt_results_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exported', description: `${results.length} IOC results exported to CSV` });
   };
 
   const getSeverityColor = (severity: string) => {
@@ -247,7 +273,12 @@ export function IOCHunt() {
                   <CardTitle>Hunt Results</CardTitle>
                   <CardDescription>{results.length} matches found</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleExportResults}
+                >
                   <CheckCircle className="h-4 w-4" />
                   Export Results
                 </Button>
@@ -297,7 +328,11 @@ export function IOCHunt() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedResult(result)}
+                          >
                             Investigate
                           </Button>
                         </TableCell>
@@ -310,6 +345,89 @@ export function IOCHunt() {
           </Card>
         </motion.div>
       )}
+
+      {/* IOC Investigate Panel */}
+      <AnimatePresence>
+        {selectedResult && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedResult(null)}
+            />
+            <motion.div
+              className="fixed right-0 top-16 h-[calc(100vh-4rem)] w-96 bg-white dark:bg-slate-950 border-l border-white/20 dark:border-slate-700/50 shadow-2xl z-50 overflow-y-auto"
+              initial={{ x: 400 }}
+              animate={{ x: 0 }}
+              exit={{ x: 400 }}
+              transition={{ duration: 0.3 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">IOC Investigation</h2>
+                    <p className="text-sm text-muted-foreground mt-1 font-mono break-all">{selectedResult.ioc}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedResult(null)}>
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Threat Assessment</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Severity</span>
+                      <Badge className={getSeverityColor(selectedResult.severity)}>
+                        {selectedResult.severity.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Confidence</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 bg-white/20 dark:bg-slate-800/50 rounded-full h-2">
+                          <div
+                            className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full"
+                            style={{ width: `${selectedResult.confidence}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium">{selectedResult.confidence}%</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Match Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Match Location</p>
+                      <p className="font-mono text-sm break-all">{selectedResult.matchLocation}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">First Seen</p>
+                        <p className="text-sm font-medium">{selectedResult.firstSeen}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Last Seen</p>
+                        <p className="text-sm font-medium">{selectedResult.lastSeen}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

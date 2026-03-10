@@ -57,10 +57,10 @@ export function Header() {
 
           {/* Alerts */}
           <Button variant="ghost" size="icon" className="relative" onClick={() => navigate('/behavioral')}>
-            <Bell className="h-5 w-5" />
+            <Bell className="h-5 w-5 text-foreground" />
             {alertCount > 0 && (
-              <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center bg-red-600 text-white text-xs">
-                {alertCount}
+              <Badge className="absolute -top-1.5 -right-1.5 min-w-[1.25rem] h-5 px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full border-2 border-background">
+                {alertCount > 99 ? '99+' : alertCount}
               </Badge>
             )}
           </Button>

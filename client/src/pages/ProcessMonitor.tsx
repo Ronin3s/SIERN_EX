@@ -93,6 +93,32 @@ export function ProcessMonitor() {
     }
   };
 
+  const handleExportCSV = () => {
+    const headers = ['Name', 'PID', 'User', 'CPU (%)', 'Memory (%)', 'Path', 'Risk Score'];
+    const rows = filteredProcesses.map((p) => [
+      p.name,
+      p.pid,
+      p.user,
+      p.cpu.toFixed(1),
+      p.memory.toFixed(1),
+      p.path,
+      p.riskScore,
+    ]);
+    const csvContent = [headers, ...rows]
+      .map((row) => row.map((val) => `"${val}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `processes_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Exported', description: `${filteredProcesses.length} processes exported to CSV` });
+  };
+
   const getRiskColor = (score: number) => {
     if (score <= 30) return 'bg-green-500/20 text-green-700 dark:text-green-400';
     if (score <= 70) return 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400';
@@ -153,7 +179,13 @@ export function ProcessMonitor() {
         >
           {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
         </Button>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={handleExportCSV}
+          disabled={filteredProcesses.length === 0}
+        >
           <Download className="h-4 w-4" />
           Export CSV
         </Button>
