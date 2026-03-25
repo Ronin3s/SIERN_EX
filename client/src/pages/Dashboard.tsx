@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Activity, Clock, Shield } from 'lucide-react';
+import { 
+  AlertCircle, Activity, Clock, Shield, ShieldCheck, AlertTriangle, Server, Search,
+  PieChart as PieChartIcon, BarChart3
+} from 'lucide-react';
+import { 
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid
+} from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +20,10 @@ interface DashboardStats {
   alertsLast24h: number;
   lastScanTime: string;
   systemStatus: 'normal' | 'warning' | 'critical';
+  managedNodesCount: number;
+  totalFindings: number;
+  findingsBySeverity: Record<string, number>;
+  findingsByStatus: Record<string, number>;
 }
 
 interface Alert {
@@ -21,6 +32,7 @@ interface Alert {
   severity: 'critical' | 'warning' | 'info';
   timestamp: string;
   description: string;
+  source: string;
 }
 
 export function Dashboard() {
@@ -77,16 +89,41 @@ export function Dashboard() {
     }
   };
 
+  const getSourceIcon = (source: string) => {
+    switch (source) {
+      case 'Persistence Auditor':
+        return <Server className="h-4 w-4 text-cyan-500" />;
+      case 'Behavioral Engine':
+        return <Activity className="h-4 w-4 text-blue-500" />;
+      case 'Integrity Scanner':
+        return <Search className="h-4 w-4 text-green-500" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-slate-400" />;
+    }
+  };
+
+  const severityData = stats ? [
+    { name: 'Critical', value: stats.findingsBySeverity?.critical || 0, color: '#ef4444' },
+    { name: 'High', value: stats.findingsBySeverity?.high || 0, color: '#f97316' },
+    { name: 'Medium', value: stats.findingsBySeverity?.medium || 0, color: '#eab308' },
+    { name: 'Low', value: stats.findingsBySeverity?.low || 0, color: '#3b82f6' },
+  ].filter(d => d.value > 0) : [];
+
+  const statusData = stats ? [
+    { name: 'Active', count: stats.findingsByStatus?.active || 0, fill: '#ef4444' },
+    { name: 'Resolved', count: stats.findingsByStatus?.resolved || 0, fill: '#22c55e' },
+  ] : [];
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -114,7 +151,7 @@ export function Dashboard() {
 
       {/* Stats Grid */}
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, staggerChildren: 0.1 }}
@@ -179,62 +216,216 @@ export function Dashboard() {
           </Card>
         </motion.div>
 
-        {/* System Status */}
+        {/* Managed Nodes */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-transform hover:scale-[1.02] cursor-pointer" onClick={() => navigate('/nodes')}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-cyan-500" />
+                Managed Nodes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats?.managedNodesCount || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Servers in SOC inventory</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Persistence Findings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.4 }}
+        >
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-transform hover:scale-[1.02] cursor-pointer" onClick={() => navigate('/nodes')}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                Persistence Threats
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold">{stats?.totalFindings || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Total backdoor indicators</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* System Status */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.5 }}
+        >
           <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50 hover:shadow-lg transition-shadow">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Shield className="h-4 w-4 text-cyan-500" />
-                System Status
+                System Health
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Badge className={`${getStatusColor(stats?.systemStatus || 'normal')} border`}>
                 {stats?.systemStatus?.toUpperCase() || 'NORMAL'}
               </Badge>
-              <p className="text-xs text-muted-foreground mt-2">All systems operational</p>
+              <p className="text-xs text-muted-foreground mt-2">Core monitoring status</p>
             </CardContent>
           </Card>
         </motion.div>
       </motion.div>
 
+      {/* Intelligence Section (Charts) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Severity Distribution */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <PieChartIcon className="h-5 w-5 text-purple-500" />
+                  Threat Severity
+                </CardTitle>
+                <CardDescription>Distribution of active findings</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="h-[300px] pt-4">
+              {severityData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={severityData}
+                      cx="50%"
+                      cy="40%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {severityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: '#fff' }}
+                      itemStyle={{ color: '#fff' }}
+                    />
+                    <Legend verticalAlign="bottom" height={36}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                  <ShieldCheck className="h-12 w-12 opacity-20 mb-2" />
+                  <p>No active threats detected</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Resolution Progress */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
+          <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <div>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-cyan-500" />
+                  Resolution Progress
+                </CardTitle>
+                <CardDescription>Active vs Remediated threats</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="h-[300px] pt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={statusData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'currentColor', opacity: 0.6, fontSize: 12 }} 
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'currentColor', opacity: 0.6, fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '8px', color: '#fff' }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+
       {/* Recent Alerts */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
       >
         <Card className="backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50">
           <CardHeader>
-            <CardTitle>Recent Alerts</CardTitle>
-            <CardDescription>Last 24 hours activity</CardDescription>
+            <CardTitle>Security Activity</CardTitle>
+            <CardDescription>Consolidated events from all modules</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {alerts.length > 0 ? (
                 alerts.map((alert) => (
                   <motion.div
                     key={alert.id}
-                    className={`p-4 rounded-lg border ${getSeverityColor(alert.severity)} border-opacity-30`}
+                    className={`p-4 rounded-lg border ${getSeverityColor(alert.severity)} border-opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all cursor-pointer group hover:pl-6`}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3 }}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <p className="font-semibold">{alert.title}</p>
-                        <p className="text-sm opacity-75 mt-1">{alert.description}</p>
+                    <div className="flex items-start gap-4">
+                      <div className="mt-1 transition-transform group-hover:scale-125 duration-300">
+                        {getSourceIcon(alert.source)}
                       </div>
-                      <span className="text-xs opacity-60 whitespace-nowrap ml-4">{alert.timestamp}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-4">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100">{alert.title}</p>
+                          <span className="text-[10px] font-mono opacity-60 whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                            {alert.source}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{alert.description}</p>
+                        <div className="flex items-center gap-3 mt-3">
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/50 px-2 py-1 rounded">
+                            <Clock className="h-3 w-3" /> {alert.timestamp}
+                          </span>
+                          <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
+                            {alert.severity}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <p className="text-center text-muted-foreground py-8">No alerts in the last 24 hours</p>
+                <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/20 rounded-lg border border-dashed border-slate-200 dark:border-slate-800">
+                  <Activity className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500 font-medium">No alerts in the last 24 hours</p>
+                  <p className="text-xs text-slate-400 mt-1">Infrastructure appears quiet</p>
+                </div>
               )}
             </div>
           </CardContent>

@@ -13,6 +13,8 @@ import { IntegrityScanner } from "./pages/IntegrityScanner"
 import { IOCHunt } from "./pages/IOCHunt"
 import { BehavioralDetection } from "./pages/BehavioralDetection"
 import { ResponseCenter } from "./pages/ResponseCenter"
+import { NodeManager } from "./pages/NodeManager"
+import { PersistenceMonitor } from "./pages/PersistenceMonitor"
 import { Settings } from "./pages/Settings"
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
               <Route path="ioc-hunt" element={<IOCHunt />} />
               <Route path="behavioral" element={<BehavioralDetection />} />
               <Route path="response" element={<ResponseCenter />} />
+              <Route path="nodes" element={<NodeManager />} />
+              <Route path="nodes/:nodeId/persistence" element={<PersistenceMonitor />} />
               <Route path="settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<BlankPage />} />

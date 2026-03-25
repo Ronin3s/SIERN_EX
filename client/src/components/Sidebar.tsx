@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   Zap,
   Settings,
+  Server,
   ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, path: '/' },
   { label: 'Process Monitor', icon: <Activity className="h-5 w-5" />, path: '/processes' },
+  { label: 'Managed Nodes', icon: <Server className="h-5 w-5" />, path: '/nodes' },
   { label: 'Integrity Scanner', icon: <Shield className="h-5 w-5" />, path: '/scanner' },
   { label: 'IOC Hunt', icon: <Search className="h-5 w-5" />, path: '/ioc-hunt' },
   { label: 'Behavioral Detection', icon: <AlertTriangle className="h-5 w-5" />, path: '/behavioral' },

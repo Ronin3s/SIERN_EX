@@ -9,6 +9,7 @@ import scannerRoutes from './routes/scannerRoutes';
 import iocHuntRoutes from './routes/iocHuntRoutes';
 import behavioralRoutes from './routes/behavioralRoutes';
 import responseRoutes from './routes/responseRoutes';
+import nodeRoutes from './routes/nodeRoutes';
 import { connectDB } from './config/database';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -64,11 +65,6 @@ app.use(express.urlencoded({ extended: true }));
 // Database connection
 connectDB();
 
-app.on("error", (error: Error) => {
-  console.error(`Server error: ${error.message}`);
-  console.error(error.stack);
-});
-
 // Basic Routes
 app.use(basicRoutes);
 // Authentication Routes
@@ -85,6 +81,8 @@ app.use('/api/ioc-hunt', iocHuntRoutes);
 app.use('/api/behavioral', behavioralRoutes);
 // Response Center Routes
 app.use('/api/response', responseRoutes);
+// Node Management and Persistence Audit Routes
+app.use('/api/nodes', nodeRoutes);
 
 // If no routes handled the request, it's a 404
 app.use((req: Request, res: Response) => {
