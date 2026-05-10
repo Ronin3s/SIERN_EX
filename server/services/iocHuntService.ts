@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import * as processService from './processService';
 import * as alertService from './alertService';
+import * as ResponseService from './responseService';
 
 export interface IOCHuntConfig {
   iocs: string[];
@@ -285,6 +286,15 @@ export async function startIOCHunt(config: IOCHuntConfig): Promise<IOCMatch[]> {
     }
 
     console.log(`IOC hunt complete. Found ${matches.length} total matches`);
+
+    // Log the hunt completion to Response Center
+    await ResponseService.createAction({
+      type: 'hunt',
+      target: config.scope,
+      user: 'IOC Hunter',
+      description: `IOC hunt completed across ${config.scope}. Found ${matches.length} matches using ${config.iocs.length} indicators.`,
+      metadata: { scope: config.scope, matchesCount: matches.length, iocCount: config.iocs.length }
+    });
 
     return matches;
   } catch (error) {

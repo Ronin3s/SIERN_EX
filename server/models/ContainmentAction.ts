@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IContainmentAction extends Document {
-    type: 'kill' | 'isolate' | 'quarantine';
+    type: 'kill' | 'isolate' | 'quarantine' | 'resolve' | 'audit' | 'hunt' | 'block';
     target: string;
     timestamp: Date;
     status: 'active' | 'resolved';
@@ -14,7 +14,7 @@ export interface IContainmentAction extends Document {
 const schema = new Schema<IContainmentAction>({
     type: {
         type: String,
-        enum: ['kill', 'isolate', 'quarantine'],
+        enum: ['kill', 'isolate', 'quarantine', 'resolve', 'audit', 'hunt', 'block'],
         required: true,
     },
     target: {

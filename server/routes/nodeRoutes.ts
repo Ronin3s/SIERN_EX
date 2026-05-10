@@ -67,7 +67,8 @@ router.get('/:nodeId/findings', async (req, res) => {
 
 router.post('/findings/:findingId/resolve', async (req, res) => {
     try {
-        const finding = await PersistenceService.resolveFinding(req.params.findingId);
+        const userEmail = (req as any).user?.email || 'admin@siern.local';
+        const finding = await PersistenceService.resolveFinding(req.params.findingId, userEmail);
         res.json(finding);
     } catch (error) {
         res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });

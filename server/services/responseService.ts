@@ -1,7 +1,7 @@
 import ContainmentAction, { IContainmentAction } from '../models/ContainmentAction';
 
 export interface CreateActionData {
-    type: 'kill' | 'isolate' | 'quarantine';
+    type: 'kill' | 'isolate' | 'quarantine' | 'resolve' | 'audit' | 'hunt' | 'block';
     target: string;
     user: string;
     description?: string;

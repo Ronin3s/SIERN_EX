@@ -2,6 +2,7 @@ import PersistenceFinding, { IPersistenceFinding } from '../models/PersistenceFi
 import ManagedNode from '../models/ManagedNode';
 import mongoose from 'mongoose';
 import * as AlertService from './alertService';
+import * as ResponseService from './responseService';
 
 /**
  * Audit a node for unauthorized persistence Findings
@@ -279,6 +280,15 @@ export async function auditNodePersistence(nodeId: string): Promise<IPersistence
             }
         }
 
+        // Log the audit completion to Response Center
+        await ResponseService.createAction({
+            type: 'audit',
+            target: node.ip,
+            user: 'System Auditor',
+            description: `Infrastructure audit completed for ${node.name}. ${savedFindings.length} findings identified.`,
+            metadata: { nodeId, findingsCount: savedFindings.length }
+        });
+
         return savedFindings;
     } catch (error) {
         console.error('[PersistenceService] Audit failed:', error);
@@ -313,14 +323,27 @@ export async function getFindingById(findingId: string): Promise<IPersistenceFin
 /**
  * Resolve a security finding
  */
-export async function resolveFinding(findingId: string): Promise<IPersistenceFinding | null> {
+export async function resolveFinding(findingId: string, userEmail: string = 'admin@siern.local'): Promise<IPersistenceFinding | null> {
     try {
-        console.log(`[PersistenceService] Resolving finding: ${findingId}`);
-        return await PersistenceFinding.findByIdAndUpdate(
+        console.log(`[PersistenceService] Resolving finding: ${findingId} by ${userEmail}`);
+        const finding = await PersistenceFinding.findByIdAndUpdate(
             findingId,
             { status: 'resolved', lastSeen: new Date() },
             { new: true }
         );
+
+        if (finding) {
+            // Log resolution to Response Center
+            await ResponseService.createAction({
+                type: 'resolve',
+                target: finding.name,
+                user: userEmail,
+                description: `Resolved security threat: ${finding.name} on node ${finding.nodeId}`,
+                metadata: { findingId, type: finding.type }
+            });
+        }
+
+        return finding;
     } catch (error) {
         console.error('[PersistenceService] Error resolving finding:', error);
         throw new Error('Failed to resolve finding');

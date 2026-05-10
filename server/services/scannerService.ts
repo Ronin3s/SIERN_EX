@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import FileBaseline, { IFileBaseline } from '../models/FileBaseline';
 import * as alertService from './alertService';
+import * as ResponseService from './responseService';
 
 export interface ScanConfig {
   path: string;
@@ -272,6 +273,16 @@ export async function startScan(config: ScanConfig): Promise<FileChange[]> {
     }
 
     console.log(`Scan complete. Found ${changes.length} changes`);
+
+    // Log the scan completion to Response Center
+    await ResponseService.createAction({
+      type: 'audit',
+      target: config.path,
+      user: 'Integrity Scanner',
+      description: `File integrity scan completed for ${config.path}. ${changes.length} changes detected.`,
+      metadata: { path: config.path, changesCount: changes.length }
+    });
+
     return changes;
   } catch (error) {
     console.error('Error during scan:', error);
@@ -349,6 +360,16 @@ export async function createBaseline(scanPath: string, includeSubdirectories: bo
     }
 
     console.log(`Baseline created/updated: ${created} new, ${updated} updated`);
+
+    // Log the baseline creation to Response Center
+    await ResponseService.createAction({
+      type: 'audit',
+      target: scanPath,
+      user: 'Integrity Scanner',
+      description: `New security baseline created for ${scanPath} (${created + updated} files).`,
+      metadata: { scanPath, created, updated }
+    });
+
     return { created, updated };
   } catch (error) {
     console.error('Error creating baseline:', error);
