@@ -1,6 +1,7 @@
 import psList from 'ps-list';
 import os from 'os';
 import { exec } from 'child_process';
+import * as ResponseService from './responseService';
 
 export interface ProcessInfo {
   id: string;
@@ -132,7 +133,7 @@ export async function getAllProcesses(): Promise<ProcessInfo[]> {
 /**
  * Terminate a process by PID
  */
-export async function terminateProcess(pid: number): Promise<{ success: boolean; message: string }> {
+export async function terminateProcess(pid: number, userEmail: string = 'system'): Promise<{ success: boolean; message: string }> {
   try {
     console.log(`Attempting to terminate process with PID: ${pid}`);
 
@@ -178,6 +179,16 @@ export async function terminateProcess(pid: number): Promise<{ success: boolean;
         console.log(`Process ${pid} successfully terminated`);
       }
     }
+
+    // Log the action to Response Center
+    await ResponseService.createAction({
+      type: 'kill',
+      target: `${targetProcess.name} (PID: ${pid})`,
+      user: userEmail,
+      description: `Terminated process ${targetProcess.name} with PID ${pid}`,
+      result: 'success',
+      metadata: { pid, name: targetProcess.name, path: targetProcess.cmd }
+    });
 
     return {
       success: true,

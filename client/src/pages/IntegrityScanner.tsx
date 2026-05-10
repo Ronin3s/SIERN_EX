@@ -47,16 +47,17 @@ export function IntegrityScanner() {
       setScanning(true);
       setProgress(0);
 
-      // Simulate scan progress
+      // Simulate scan progress (cap at 95% until real data arrives)
       const progressInterval = setInterval(() => {
         setProgress((prev) => {
-          if (prev >= 90) {
+          if (prev >= 95) {
             clearInterval(progressInterval);
-            return prev;
+            return 95;
           }
-          return prev + Math.random() * 30;
+          const next = prev + Math.random() * 15;
+          return Math.min(next, 95);
         });
-      }, 500);
+      }, 400);
 
       const data = await startScan({
         path: scanPath,

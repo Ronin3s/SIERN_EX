@@ -50,8 +50,9 @@ router.post('/:id/kill', requireUser(), async (req: AuthRequest, res: Response) 
     }
 
     console.log(`[Process Monitor] User ${req.user?.email} attempting to terminate process ${pid}`);
+    const userEmail = (req.user?.email as string) || 'system';
 
-    const result = await ProcessService.terminateProcess(pid);
+    const result = await ProcessService.terminateProcess(pid, userEmail);
 
     if (result.success) {
       console.log(`[Process Monitor] Process ${pid} terminated successfully`);
