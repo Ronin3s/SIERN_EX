@@ -16,3 +16,11 @@ export const simulateEvent = async (ruleId: string) => {
   const res = await api.post('/api/behavioral/simulate', { ruleId });
   return res.data;
 };
+
+// Description: Run a live detection scan
+// Endpoint: POST /api/behavioral/scan
+// Response: { detected: number, anomalies: Array<Anomaly> }
+export const runScan = async () => {
+  const res = await api.post('/api/behavioral/scan');
+  return res.data;
+};

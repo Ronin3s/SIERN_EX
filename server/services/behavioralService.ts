@@ -1,6 +1,7 @@
 import Anomaly, { IAnomaly } from '../models/Anomaly';
 import * as ProcessService from './processService';
 import * as alertService from './alertService';
+import * as ResponseService from './responseService';
 import os from 'os';
 
 /**
@@ -178,6 +179,16 @@ export async function resolveAnomaly(anomalyId: string): Promise<IAnomaly | null
             console.warn(`[Behavioral] Anomaly ${anomalyId} not found`);
             return null;
         }
+
+        // Log resolution to Response Center
+        await ResponseService.createAction({
+            type: 'resolve',
+            target: anomaly.ruleName,
+            user: 'Security Analyst',
+            description: `Resolved behavioral anomaly: ${anomaly.ruleName} for process ${anomaly.process}`,
+            metadata: { anomalyId, ruleId: anomaly.ruleId }
+        });
+
         console.log(`[Behavioral] Anomaly ${anomalyId} resolved`);
         return anomaly;
     } catch (error) {

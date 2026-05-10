@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAnomalies, simulateEvent } from '@/api/behavioral';
+import { getAnomalies, simulateEvent, runScan } from '@/api/behavioral';
 import { useToast } from '@/hooks/useToast';
 
 interface Anomaly {
@@ -32,6 +32,7 @@ export function BehavioralDetection() {
   const [loading, setLoading] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [simulatingRule, setSimulatingRule] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const [selectedAnomaly, setSelectedAnomaly] = useState<Anomaly | null>(null);
   const { toast } = useToast();
 
@@ -73,6 +74,27 @@ export function BehavioralDetection() {
       });
     } finally {
       setSimulatingRule(null);
+    }
+  };
+
+  const handleRunScan = async () => {
+    try {
+      setScanning(true);
+      const result = await runScan();
+      setAnomalies([...result.anomalies, ...anomalies]);
+      toast({
+        title: 'Scan Complete',
+        description: `Detection scan finished. Found ${result.detected} new anomalies.`,
+      });
+    } catch (error) {
+      console.error('Scan failed:', error);
+      toast({
+        title: 'Error',
+        description: 'Detection scan failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -119,14 +141,24 @@ export function BehavioralDetection() {
             <h1 className="text-3xl font-bold">Behavioral Anomaly Detection</h1>
             <p className="text-muted-foreground mt-1">Rule-based threat detection and analysis</p>
           </div>
-          <Button
-            onClick={() => setShowRules(!showRules)}
-            variant="outline"
-            className="gap-2"
-          >
-            <Settings className="h-4 w-4" />
-            {showRules ? 'Hide Rules' : 'View Rules'}
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={handleRunScan}
+              disabled={scanning}
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Play className={`h-4 w-4 ${scanning ? 'animate-spin' : ''}`} />
+              {scanning ? 'Scanning...' : 'Run Detection Scan'}
+            </Button>
+            <Button
+              onClick={() => setShowRules(!showRules)}
+              variant="outline"
+              className="gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              {showRules ? 'Hide Rules' : 'View Rules'}
+            </Button>
+          </div>
         </div>
       </motion.div>
 
