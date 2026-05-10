@@ -66,9 +66,13 @@ export function ProcessMonitor() {
   }, [autoRefresh, fetchProcesses]);
 
   useEffect(() => {
-    const filtered = processes.filter((p) =>
-      p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const filtered = processes.filter((p) => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        p.name.toLowerCase().includes(searchLower) ||
+        p.pid.toString().includes(searchLower)
+      );
+    });
     setFilteredProcesses(filtered);
   }, [searchTerm, processes]);
 
@@ -155,7 +159,7 @@ export function ProcessMonitor() {
         <div className="flex-1 min-w-64 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search processes..."
+            placeholder="Search by name or PID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10 backdrop-blur-sm bg-white/50 dark:bg-slate-900/50 border-white/20 dark:border-slate-700/50"
